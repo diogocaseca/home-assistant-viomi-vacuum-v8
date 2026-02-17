@@ -1,4 +1,4 @@
-Versão Diogo Caseca
+Version by Diogo Caseca
 
 # Home Assistant support for Viomi Vacuum V8 (STYJ02YM)
 
