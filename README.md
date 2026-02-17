@@ -1,3 +1,5 @@
+Versão Diogo Caseca
+
 # Home Assistant support for Viomi Vacuum V8 (STYJ02YM)
 
 This is for Viomi Vacuum V8 (STYJ02YM) (apparently EU version) with 3.5.3_0017 firmware.
