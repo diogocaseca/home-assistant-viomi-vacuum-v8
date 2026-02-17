@@ -1,7 +1,7 @@
 {
   "domain": "viomi_vacuum_v8",
   "name": "Viomi Vacuum V8",
-  "version": "2026.02.17",
+  "version": "2026.2.1",
   "documentation": "https://github.com/diogocaseca/home-assistant-viomi-vacuum-v8",
   "requirements": [
     "construct>=2.10.59",
