@@ -8,12 +8,6 @@ import voluptuous as vol
 
 from homeassistant.components.vacuum import (
     PLATFORM_SCHEMA,
-    STATE_CLEANING,
-    STATE_DOCKED,
-    STATE_ERROR,
-    STATE_IDLE,
-    STATE_PAUSED,
-    STATE_RETURNING,
     StateVacuumEntity,
     VacuumEntityFeature,
 )
@@ -28,6 +22,13 @@ from homeassistant.const import (
 import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
+
+STATE_CLEANING = "cleaning"
+STATE_DOCKED = "docked"
+STATE_ERROR = "error"
+STATE_IDLE = "idle"
+STATE_PAUSED = "paused"
+STATE_RETURNING = "returning"
 
 DEFAULT_NAME = "Viomi Vacuum V8"
 DOMAIN = "viomi_vacuum_v8"
