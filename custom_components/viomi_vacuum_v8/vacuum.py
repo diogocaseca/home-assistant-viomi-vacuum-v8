@@ -186,9 +186,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     host = config_entry.data[CONF_HOST]
     token = config_entry.data[CONF_TOKEN]
     name = config_entry.data.get(CONF_NAME, DEFAULT_NAME)
+    unique_id = f"{DOMAIN}_{config_entry.unique_id or host}"
 
     vacuum = ViomiVacuum(host, token)
-    device = ViomiVacuumEntity(name, vacuum)
+    device = ViomiVacuumEntity(name, vacuum, unique_id)
     hass.data[DATA_KEY][DEVICES][host] = device
 
     async_add_entities([device], update_before_add=True)
@@ -263,10 +264,11 @@ def async_remove_config_entry_device(hass, config_entry):
 class ViomiVacuumEntity(StateVacuumEntity):
     """Representation of a Viomi Vacuum V8 robot."""
 
-    def __init__(self, name, vacuum):
+    def __init__(self, name, vacuum, unique_id):
         """Initialize the device handler."""
         self._name = name
         self._vacuum = vacuum
+        self._unique_id = unique_id
 
         self._last_clean_point = None
 
@@ -277,6 +279,11 @@ class ViomiVacuumEntity(StateVacuumEntity):
     def name(self):
         """Return the name of the device."""
         return self._name
+
+    @property
+    def unique_id(self):
+        """Return a unique identifier for this entity."""
+        return self._unique_id
 
     @property
     def state(self):
