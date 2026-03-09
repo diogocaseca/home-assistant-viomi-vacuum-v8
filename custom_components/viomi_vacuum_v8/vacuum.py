@@ -7,7 +7,6 @@ from miio import DeviceException, ViomiVacuum  # pylint: disable=import-error
 import voluptuous as vol
 
 from homeassistant.components.vacuum import (
-    PLATFORM_SCHEMA,
     StateVacuumEntity,
     VacuumEntityFeature,
 )
@@ -16,10 +15,10 @@ from homeassistant.const import (
     CONF_HOST,
     CONF_NAME,
     CONF_TOKEN,
-    STATE_OFF,
-    STATE_ON,
 )
 import homeassistant.helpers.config_validation as cv
+
+from .const import DATA_KEY, DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,18 +29,8 @@ STATE_IDLE = "idle"
 STATE_PAUSED = "paused"
 STATE_RETURNING = "returning"
 
-DEFAULT_NAME = "Viomi Vacuum V8"
-DOMAIN = "viomi_vacuum_v8"
-DATA_KEY = "viomi_vacuum_v8"
-
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_HOST): cv.string,
-        vol.Required(CONF_TOKEN): vol.All(cv.string, vol.Length(min=32, max=32)),
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-    },
-    extra=vol.ALLOW_EXTRA,
-)
+SERVICES_REGISTERED = "services_registered"
+DEVICES = "devices"
 
 SERVICE_CLEAN_ZONE = "clean_zone"
 SERVICE_CLEAN_AREA = "clean_area"
@@ -189,34 +178,49 @@ VACUUM_CARD_PROPS_REFERENCES = {
     'cleaning_time': 's_time'
 }
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Viomi Vacuum V8 robot platform."""
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up Viomi Vacuum V8 from a config entry."""
     if DATA_KEY not in hass.data:
-        hass.data[DATA_KEY] = {}
+        hass.data[DATA_KEY] = {SERVICES_REGISTERED: False, DEVICES: {}}
 
-    host = config[CONF_HOST]
-    token = config[CONF_TOKEN]
-    name = config[CONF_NAME]
-
-    # Create handler
-    _LOGGER.info("Initializing with host %s (token %s...)", host, token[:5])
+    host = config_entry.data[CONF_HOST]
+    token = config_entry.data[CONF_TOKEN]
+    name = config_entry.data.get(CONF_NAME, DEFAULT_NAME)
 
     vacuum = ViomiVacuum(host, token)
     device = ViomiVacuumEntity(name, vacuum)
-    hass.data[DATA_KEY][host] = device
+    hass.data[DATA_KEY][DEVICES][host] = device
 
     async_add_entities([device], update_before_add=True)
+
+    await _async_register_services(hass)
+
+
+async def _async_register_services(hass):
+    """Register vacuum services once."""
+    if hass.data[DATA_KEY][SERVICES_REGISTERED]:
+        return
 
     async def async_service_handler(service):
         """Map services to methods on Viomi Vacuum V8."""
         method = SERVICE_TO_METHOD.get(service.service)
+        if method is None:
+            return
+
         params = service.data.copy()
-        entity_ids = params.pop(ATTR_ENTITY_ID, hass.data[DATA_KEY].values())
+        entity_ids = params.pop(ATTR_ENTITY_ID, None)
+        devices = hass.data[DATA_KEY][DEVICES].values()
+
+        if entity_ids:
+            target_devices = [
+                device for device in devices if device.entity_id in entity_ids
+            ]
+        else:
+            target_devices = list(devices)
+
         update_tasks = []
 
-        for device in filter(
-            lambda x: x.entity_id in entity_ids, hass.data[DATA_KEY].values()
-        ):
+        for device in target_devices:
             if not hasattr(device, method["method"]):
                 continue
             await getattr(device, method["method"])(**params)
@@ -232,6 +236,28 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         hass.services.async_register(
             DOMAIN, vacuum_service, async_service_handler, schema=schema
         )
+
+    hass.data[DATA_KEY][SERVICES_REGISTERED] = True
+
+
+def async_remove_config_entry_device(hass, config_entry):
+    """Remove a config-entry-backed device and clean up services."""
+    domain_data = hass.data.get(DATA_KEY)
+    if domain_data is None:
+        return
+
+    host = config_entry.data.get(CONF_HOST)
+    if host:
+        domain_data[DEVICES].pop(host, None)
+
+    if domain_data[DEVICES]:
+        return
+
+    for vacuum_service in SERVICE_TO_METHOD:
+        if hass.services.has_service(DOMAIN, vacuum_service):
+            hass.services.async_remove(DOMAIN, vacuum_service)
+
+    domain_data[SERVICES_REGISTERED] = False
 
 
 class ViomiVacuumEntity(StateVacuumEntity):

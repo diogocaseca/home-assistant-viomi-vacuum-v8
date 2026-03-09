@@ -8,14 +8,10 @@ _Original code by [@KrzysztofHajdamowicz](https://github.com/KrzysztofHajdamowic
 
 ## Install and usage
 - Install it with [HACS](https://hacs.xyz/)
-- Add the configuration to `configuration.yaml`, example:
 
-```yaml
-vacuum:
-  - platform: viomi_vacuum_v8
-    host: 192.168.0.105
-    token: !secret viomi_vacuum_v8_token
-    name: 'Viomi Vacuum V8'
-```
+### Configure from UI
+1. Go to `Settings` -> `Devices & Services` -> `Add Integration`.
+2. Search for `Viomi Vacuum V8`.
+3. Enter `host`, `token` and optional `name`.
 
 Services described in the `services.yaml`.

@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Viomi Vacuum V8",
+        "description": "Configure a conexao do seu aspirador Viomi.",
+        "data": {
+          "host": "Host",
+          "token": "Token",
+          "name": "Nome"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Falha ao conectar. Verifique host e token.",
+      "unknown": "Erro inesperado"
+    },
+    "abort": {
+      "already_configured": "Este dispositivo ja esta configurado"
+    }
+  }
+}
