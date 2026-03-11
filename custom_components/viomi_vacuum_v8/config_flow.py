@@ -28,9 +28,6 @@ class ViomiVacuumV8ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            await self.async_set_unique_id(user_input[CONF_HOST])
-            self._abort_if_unique_id_configured()
-
             try:
                 await _async_validate_connection(
                     self.hass,

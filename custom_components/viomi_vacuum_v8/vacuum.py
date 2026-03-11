@@ -186,11 +186,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     host = config_entry.data[CONF_HOST]
     token = config_entry.data[CONF_TOKEN]
     name = config_entry.data.get(CONF_NAME, DEFAULT_NAME)
-    unique_id = f"{DOMAIN}_{config_entry.unique_id or host}"
+    unique_id = f"{DOMAIN}_{config_entry.entry_id}"
 
     vacuum = ViomiVacuum(host, token)
     device = ViomiVacuumEntity(name, vacuum, unique_id)
-    hass.data[DATA_KEY][DEVICES][host] = device
+    hass.data[DATA_KEY][DEVICES][config_entry.entry_id] = device
 
     async_add_entities([device], update_before_add=True)
 
@@ -247,9 +247,7 @@ def async_remove_config_entry_device(hass, config_entry):
     if domain_data is None:
         return
 
-    host = config_entry.data.get(CONF_HOST)
-    if host:
-        domain_data[DEVICES].pop(host, None)
+    domain_data[DEVICES].pop(config_entry.entry_id, None)
 
     if domain_data[DEVICES]:
         return
