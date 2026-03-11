@@ -17,6 +17,7 @@ from homeassistant.const import (
     CONF_TOKEN,
 )
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DATA_KEY, DEFAULT_NAME, DOMAIN
 
@@ -131,7 +132,6 @@ SUPPORT_VIOMI = (
     | VacuumEntityFeature.FAN_SPEED
     | VacuumEntityFeature.LOCATE
     | VacuumEntityFeature.SEND_COMMAND
-    | VacuumEntityFeature.BATTERY
     | VacuumEntityFeature.START
 )
 
@@ -189,7 +189,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     unique_id = f"{DOMAIN}_{config_entry.entry_id}"
 
     vacuum = ViomiVacuum(host, token)
-    device = ViomiVacuumEntity(name, vacuum, unique_id)
+    device = ViomiVacuumEntity(name, vacuum, unique_id, config_entry.entry_id)
     hass.data[DATA_KEY][DEVICES][config_entry.entry_id] = device
 
     async_add_entities([device], update_before_add=True)
@@ -262,11 +262,12 @@ def async_remove_config_entry_device(hass, config_entry):
 class ViomiVacuumEntity(StateVacuumEntity):
     """Representation of a Viomi Vacuum V8 robot."""
 
-    def __init__(self, name, vacuum, unique_id):
+    def __init__(self, name, vacuum, unique_id, entry_id):
         """Initialize the device handler."""
         self._name = name
         self._vacuum = vacuum
         self._unique_id = unique_id
+        self._entry_id = entry_id
 
         self._last_clean_point = None
 
@@ -298,12 +299,6 @@ class ViomiVacuumEntity(StateVacuumEntity):
                     self.vacuum_state['run_state'],
                 )
                 return None
-
-    @property
-    def battery_level(self):
-        """Return the battery level of the device."""
-        if self.vacuum_state is not None:
-            return self.vacuum_state['battary_life']
 
     @property
     def fan_speed(self):
@@ -338,6 +333,16 @@ class ViomiVacuumEntity(StateVacuumEntity):
     def available(self) -> bool:
         """Return True if entity is available."""
         return self._available
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information for entity/device linking."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name=self._name,
+            manufacturer="Viomi",
+            model="Vacuum V8",
+        )
 
     @property
     def supported_features(self):

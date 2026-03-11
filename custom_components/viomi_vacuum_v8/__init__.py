@@ -1,6 +1,6 @@
 """The Viomi Vacuum V8 integration."""
 
-PLATFORMS = ["vacuum"]
+PLATFORMS = ["vacuum", "sensor"]
 
 
 async def async_setup(hass, config):
