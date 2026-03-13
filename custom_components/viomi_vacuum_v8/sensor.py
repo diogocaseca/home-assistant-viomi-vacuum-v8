@@ -55,7 +55,13 @@ class ViomiBatterySensor(SensorEntity):
         self._attr_unique_id = f"{DOMAIN}_{entry_id}_battery"
         self._attr_native_value = None
         self._attr_available = False
+        self._is_charging = False
         self._device_name = name
+
+    @property
+    def icon(self) -> str:
+        """Return the battery icon based on charging status."""
+        return "mdi:battery-charging" if self._is_charging else "mdi:battery"
 
     @property
     def available(self) -> bool:
@@ -75,13 +81,33 @@ class ViomiBatterySensor(SensorEntity):
     async def async_update(self) -> None:
         """Fetch state from the device."""
 
-        def _get_battery() -> int:
-            return int(self._vacuum.raw_command("get_prop", ["battary_life"])[0])
+        def _get_battery_and_charge() -> tuple[int, bool]:
+            values = self._vacuum.raw_command(
+                "get_prop", ["battary_life", "is_charge"]
+            )
+            battery = int(values[0])
+
+            # Viomi returns charge status as 0/1 string or int,
+            # depending on firmware.
+            is_charging = False
+            if len(values) > 1:
+                try:
+                    is_charging = int(values[1]) == 1
+                except (ValueError, TypeError):
+                    is_charging = str(values[1]).lower() in {
+                        "true",
+                        "on",
+                        "charging",
+                    }
+
+            return battery, is_charging
 
         try:
-            self._attr_native_value = await self.hass.async_add_executor_job(
-                partial(_get_battery)
+            battery, is_charging = await self.hass.async_add_executor_job(
+                partial(_get_battery_and_charge)
             )
+            self._attr_native_value = battery
+            self._is_charging = is_charging
             self._attr_available = True
         except (DeviceException, OSError) as exc:
             self._attr_available = False
