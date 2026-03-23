@@ -15,3 +15,7 @@ _Original code by [@KrzysztofHajdamowicz](https://github.com/KrzysztofHajdamowic
 3. Enter `host`, `token` and optional `name`.
 
 Services described in the `services.yaml`.
+
+## Seal
+
+![Vibe Coding by Copilot](./assets/seal.png)
