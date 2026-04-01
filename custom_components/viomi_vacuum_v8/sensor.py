@@ -61,7 +61,34 @@ class ViomiBatterySensor(SensorEntity):
     @property
     def icon(self) -> str:
         """Return the battery icon based on charging status."""
-        return "mdi:battery-charging" if self._is_charging else "mdi:battery"
+        if self._is_charging:
+            return "mdi:battery-charging"
+        return self._battery_icon_for_level(self._attr_native_value)
+
+    @staticmethod
+    def _battery_icon_for_level(level: int | None) -> str:
+        """Return an icon that matches the current battery level."""
+        if level is None:
+            return "mdi:battery"
+        if level <= 10:
+            return "mdi:battery-10"
+        if level <= 20:
+            return "mdi:battery-20"
+        if level <= 30:
+            return "mdi:battery-30"
+        if level <= 40:
+            return "mdi:battery-40"
+        if level <= 50:
+            return "mdi:battery-50"
+        if level <= 60:
+            return "mdi:battery-60"
+        if level <= 70:
+            return "mdi:battery-70"
+        if level <= 80:
+            return "mdi:battery-80"
+        if level <= 90:
+            return "mdi:battery-90"
+        return "mdi:battery"
 
     @property
     def available(self) -> bool:
@@ -83,23 +110,18 @@ class ViomiBatterySensor(SensorEntity):
 
         def _get_battery_and_charge() -> tuple[int, bool]:
             values = self._vacuum.raw_command(
-                "get_prop", ["battary_life", "is_charge"]
+                "get_prop", ["battary_life", "run_state"]
             )
             battery = int(values[0])
 
-            # Viomi returns charge status as 0/1 string or int,
-            # depending on firmware.
+            # Only show charging icon when docked (run_state=5)
+            # and battery is not full.
             is_charging = False
             if len(values) > 1:
                 try:
-                    # Some firmwares report charging with values other than 1.
-                    is_charging = int(values[1]) > 0
+                    is_charging = int(values[1]) == 5 and battery < 100
                 except (ValueError, TypeError):
-                    is_charging = str(values[1]).lower() in {
-                        "true",
-                        "on",
-                        "charging",
-                    }
+                    is_charging = False
 
             return battery, is_charging
 
