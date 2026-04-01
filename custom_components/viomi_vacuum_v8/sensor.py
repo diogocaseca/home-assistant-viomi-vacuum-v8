@@ -92,7 +92,8 @@ class ViomiBatterySensor(SensorEntity):
             is_charging = False
             if len(values) > 1:
                 try:
-                    is_charging = int(values[1]) == 1
+                    # Some firmwares report charging with values other than 1.
+                    is_charging = int(values[1]) > 0
                 except (ValueError, TypeError):
                     is_charging = str(values[1]).lower() in {
                         "true",
