@@ -365,12 +365,16 @@ class ViomiVacuumEntity(StateVacuumEntity):
             try:
                 err_state = int(self.vacuum_state['err_state'])
                 attrs['is_charge'] = err_state == 2103
+                # Viomi uses 2000+ codes for informational status,
+                # while 1..1999 are actual error conditions.
+                attrs['is_error'] = 0 < err_state < 2000
                 attrs['err_state_text'] = ERR_STATE_TO_TEXT.get(
                     err_state,
                     f"Unknown error {err_state}",
                 )
             except (KeyError, TypeError, ValueError):
                 attrs['is_charge'] = False
+                attrs['is_error'] = False
                 attrs['err_state_text'] = "Unknown error"
 
             # Normalize unreliable firmware work flag from current status.
