@@ -336,6 +336,12 @@ class ViomiVacuumEntity(StateVacuumEntity):
                 )
             except (KeyError, TypeError, ValueError):
                 attrs['is_charge'] = False
+
+            # Normalize unreliable firmware work flag from current status.
+            attrs['is_work'] = attrs.get('status') in {
+                STATE_CLEANING,
+                STATE_RETURNING,
+            }
         return attrs
 
     @property
