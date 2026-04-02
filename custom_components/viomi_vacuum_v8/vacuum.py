@@ -146,6 +146,39 @@ STATE_CODE_TO_STATE = {
     7: STATE_CLEANING   # Mop only
 }
 
+ERR_STATE_TO_TEXT = {
+    0: "Sleeping and not charging",
+    500: "Radar timed out",
+    501: "Wheels stuck",
+    502: "Low battery",
+    503: "Dust bin missing",
+    508: "Uneven ground",
+    509: "Cliff sensor error",
+    510: "Collision sensor error",
+    511: "Could not return to dock",
+    512: "Could not return to dock",
+    513: "Could not navigate",
+    514: "Vacuum stuck",
+    515: "Charging error",
+    516: "Mop temperature error",
+    521: "Water tank is not installed",
+    522: "Mop is not installed",
+    525: "Insufficient water in water tank",
+    527: "Remove mop",
+    528: "Dust bin missing",
+    529: "Mop and water tank missing",
+    530: "Mop and water tank missing",
+    531: "Water tank is not installed",
+    2101: "Insufficient battery, cleaning continues after recharge",
+    2102: "Returning to base",
+    2103: "Charging",
+    2104: "Returning to base",
+    2105: "Fully charged",
+    2108: "Returning to previous location",
+    2109: "Repeat cleaning",
+    2110: "Self-inspecting",
+}
+
 ALL_PROPS = [
     "run_state",
     "mode",
@@ -330,11 +363,15 @@ class ViomiVacuumEntity(StateVacuumEntity):
 
             # Normalize charging state using Viomi err_state code 2103.
             try:
-                attrs['is_charge'] = (
-                    int(self.vacuum_state['err_state']) == 2103
+                err_state = int(self.vacuum_state['err_state'])
+                attrs['is_charge'] = err_state == 2103
+                attrs['err_state_text'] = ERR_STATE_TO_TEXT.get(
+                    err_state,
+                    f"Unknown error {err_state}",
                 )
             except (KeyError, TypeError, ValueError):
                 attrs['is_charge'] = False
+                attrs['err_state_text'] = "Unknown error"
 
             # Normalize unreliable firmware work flag from current status.
             attrs['is_work'] = attrs.get('status') in {
