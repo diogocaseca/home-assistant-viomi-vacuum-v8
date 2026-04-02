@@ -110,16 +110,15 @@ class ViomiBatterySensor(SensorEntity):
 
         def _get_battery_and_charge() -> tuple[int, bool]:
             values = self._vacuum.raw_command(
-                "get_prop", ["battary_life", "run_state"]
+                "get_prop", ["battary_life", "err_state"]
             )
             battery = int(values[0])
 
-            # Only show charging icon when docked (run_state=5)
-            # and battery is not full.
+            # Viomi reports charging with err_state 2103.
             is_charging = False
             if len(values) > 1:
                 try:
-                    is_charging = int(values[1]) == 5 and battery < 100
+                    is_charging = int(values[1]) == 2103
                 except (ValueError, TypeError):
                     is_charging = False
 

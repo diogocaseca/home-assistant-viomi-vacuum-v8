@@ -328,11 +328,10 @@ class ViomiVacuumEntity(StateVacuumEntity):
             except KeyError:
                 return "Definition missing for state %s" % self.vacuum_state['run_state']
 
-            # Override unreliable firmware value with a computed charging state.
+            # Normalize charging state using Viomi err_state code 2103.
             try:
                 attrs['is_charge'] = (
-                    int(self.vacuum_state['run_state']) == 5
-                    and int(self.vacuum_state['battary_life']) < 100
+                    int(self.vacuum_state['err_state']) == 2103
                 )
             except (KeyError, TypeError, ValueError):
                 attrs['is_charge'] = False
