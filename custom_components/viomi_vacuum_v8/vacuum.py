@@ -495,7 +495,12 @@ class ViomiVacuumEntity(StateVacuumEntity):
         if not hasattr(self, "async_create_segments_issue"):
             return
 
-        last_seen = getattr(self, "last_seen_segments", None)
+        try:
+            last_seen = self.last_seen_segments
+        except RuntimeError:
+            # During initial add, registry entry can still be unavailable.
+            return
+
         if last_seen is None:
             return
 
@@ -504,7 +509,11 @@ class ViomiVacuumEntity(StateVacuumEntity):
         last_seen_snapshot = {(segment.id, segment.name, segment.group) for segment in last_seen}
 
         if current_snapshot != last_seen_snapshot:
-            self.async_create_segments_issue()
+            try:
+                self.async_create_segments_issue()
+            except RuntimeError:
+                # Guard against race conditions before entity registry is ready.
+                return
 
     async def async_update(self):
         """Fetch state and evaluate segment mapping drift."""
