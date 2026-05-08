@@ -7,6 +7,7 @@ from miio import DeviceException, ViomiVacuum  # pylint: disable=import-error
 import voluptuous as vol
 
 from homeassistant.components.vacuum import (
+    Segment,
     StateVacuumEntity,
     VacuumEntityFeature,
 )
@@ -126,6 +127,7 @@ FAN_SPEEDS = {"Silent": 0, "Standard": 1, "Medium": 2, "Turbo": 3}
 
 SUPPORT_VIOMI = (
     VacuumEntityFeature.STATE
+    | VacuumEntityFeature.CLEAN_AREA
     | VacuumEntityFeature.PAUSE
     | VacuumEntityFeature.STOP
     | VacuumEntityFeature.RETURN_HOME
@@ -303,9 +305,72 @@ class ViomiVacuumEntity(StateVacuumEntity):
         self._entry_id = entry_id
 
         self._last_clean_point = None
+        self._cached_segments = []
 
         self.vacuum_state = None
         self._available = False
+
+    @staticmethod
+    def _normalize_segments_payload(payload):
+        """Normalize multiple room/segment payload formats to Segment list."""
+        if isinstance(payload, dict):
+            payload = payload.get("result", payload.get("segments", payload.get("rooms", [])))
+
+        if not isinstance(payload, list):
+            return []
+
+        segments = []
+        for item in payload:
+            seg_id = None
+            seg_name = None
+            seg_group = None
+
+            if isinstance(item, dict):
+                seg_id = item.get("id")
+                seg_name = item.get("name") or item.get("label")
+                seg_group = item.get("group")
+            elif isinstance(item, (list, tuple)) and item:
+                seg_id = item[0]
+                if len(item) > 1:
+                    seg_name = item[1]
+                if len(item) > 2:
+                    seg_group = item[2]
+            else:
+                seg_id = item
+
+            if seg_id is None:
+                continue
+
+            seg_id = str(seg_id)
+            if not seg_name:
+                seg_name = f"Room {seg_id}"
+
+            segments.append(Segment(id=seg_id, name=str(seg_name), group=str(seg_group) if seg_group else None))
+
+        # Keep unique IDs stable and deterministic
+        unique = {segment.id: segment for segment in segments}
+        return [unique[key] for key in sorted(unique.keys(), key=lambda value: (len(value), value))]
+
+    def _get_segments_sync(self):
+        """Fetch segments from the vacuum using known Viomi commands."""
+        commands = (
+            ("get_room_mapping", []),
+            ("get_room_mapping", [0]),
+            ("get_room_info", []),
+            ("get_segment", []),
+        )
+
+        for command, params in commands:
+            try:
+                response = self._vacuum.raw_command(command, params)
+            except DeviceException:
+                continue
+
+            segments = self._normalize_segments_payload(response)
+            if segments:
+                return segments
+
+        return []
 
     @property
     def name(self):
@@ -403,6 +468,48 @@ class ViomiVacuumEntity(StateVacuumEntity):
     def supported_features(self):
         """Flag vacuum cleaner robot features that are supported."""
         return SUPPORT_VIOMI
+
+    async def async_get_segments(self):
+        """Return segments available for area mapping."""
+        segments = await self.hass.async_add_executor_job(self._get_segments_sync)
+        self._cached_segments = segments
+        return segments
+
+    async def async_clean_segments(self, segment_ids, **kwargs):
+        """Clean requested segments resolved from Home Assistant areas."""
+        segments = []
+        for segment_id in segment_ids:
+            try:
+                segments.append(int(str(segment_id)))
+            except (TypeError, ValueError):
+                _LOGGER.warning("Invalid segment id %s; skipping", segment_id)
+
+        if not segments:
+            _LOGGER.warning("No valid segment ids provided for area cleaning")
+            return
+
+        await self.async_clean_segment(segments)
+
+    async def _async_check_segments_changed(self):
+        """Create a repair issue if current segments differ from mapped ones."""
+        if not hasattr(self, "async_create_segments_issue"):
+            return
+
+        last_seen = getattr(self, "last_seen_segments", None)
+        if last_seen is None:
+            return
+
+        current = self._cached_segments or await self.async_get_segments()
+        current_snapshot = {(segment.id, segment.name, segment.group) for segment in current}
+        last_seen_snapshot = {(segment.id, segment.name, segment.group) for segment in last_seen}
+
+        if current_snapshot != last_seen_snapshot:
+            self.async_create_segments_issue()
+
+    async def async_update(self):
+        """Fetch state and evaluate segment mapping drift."""
+        await self.hass.async_add_executor_job(self.update)
+        await self._async_check_segments_changed()
 
     async def _try_command(self, mask_error, func, *args, **kwargs):
         """Call a vacuum command handling error messages."""
