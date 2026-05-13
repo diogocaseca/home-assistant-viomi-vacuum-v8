@@ -10,10 +10,15 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_TOKEN
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import DEFAULT_NAME, DOMAIN
+from .const import (
+    CONF_MANUAL_SEGMENTS,
+    DEFAULT_MANUAL_SEGMENTS,
+    DEFAULT_NAME,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +27,12 @@ class ViomiVacuumV8ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Viomi Vacuum V8."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Return options flow for this handler."""
+        return ViomiVacuumV8OptionsFlow(config_entry)
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
@@ -85,3 +96,64 @@ async def _async_validate_connection(
 
 class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
+
+
+def _validate_manual_segments(raw_value: str) -> bool:
+    """Validate manual segments format: 1:Room,2:Kitchen."""
+    if not raw_value.strip():
+        return True
+
+    chunks = raw_value.replace("\n", ",").replace(";", ",").split(",")
+    for chunk in chunks:
+        item = chunk.strip()
+        if not item:
+            continue
+
+        if ":" in item:
+            seg_id, _ = item.split(":", 1)
+        elif "=" in item:
+            seg_id, _ = item.split("=", 1)
+        else:
+            seg_id = item
+
+        if not seg_id.strip().isdigit():
+            return False
+
+    return True
+
+
+class ViomiVacuumV8OptionsFlow(config_entries.OptionsFlowWithReload):
+    """Handle options flow for Viomi Vacuum V8."""
+
+    def __init__(self, config_entry):
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input=None):
+        """Manage integration options."""
+        errors = {}
+
+        if user_input is not None:
+            manual_segments = user_input.get(CONF_MANUAL_SEGMENTS, DEFAULT_MANUAL_SEGMENTS)
+            if not _validate_manual_segments(manual_segments):
+                errors[CONF_MANUAL_SEGMENTS] = "invalid_manual_segments"
+            else:
+                return self.async_create_entry(title="", data=user_input)
+
+        data_schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_MANUAL_SEGMENTS,
+                    default=self.config_entry.options.get(
+                        CONF_MANUAL_SEGMENTS,
+                        DEFAULT_MANUAL_SEGMENTS,
+                    ),
+                ): str,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=data_schema,
+            errors=errors,
+        )

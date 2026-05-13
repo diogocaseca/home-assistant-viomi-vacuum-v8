@@ -18,5 +18,19 @@
     "abort": {
       "already_configured": "Este dispositivo ja esta configurado"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcoes Viomi Vacuum V8",
+        "description": "Formato dos segmentos manuais: 1:Sala,2:Cozinha. Tambem pode usar uma entrada por linha.",
+        "data": {
+          "manual_segments": "Segmentos manuais"
+        }
+      }
+    },
+    "error": {
+      "invalid_manual_segments": "Formato invalido. Use IDs numericos, por exemplo: 1:Sala,2:Cozinha"
+    }
   }
 }

@@ -20,7 +20,13 @@ from homeassistant.const import (
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DATA_KEY, DEFAULT_NAME, DOMAIN
+from .const import (
+    CONF_MANUAL_SEGMENTS,
+    DATA_KEY,
+    DEFAULT_MANUAL_SEGMENTS,
+    DEFAULT_NAME,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -372,6 +378,46 @@ class ViomiVacuumEntity(StateVacuumEntity):
 
         return []
 
+    @staticmethod
+    def _parse_manual_segments(raw_value):
+        """Parse manual segment mapping option into Segment objects."""
+        if not raw_value:
+            return []
+
+        segments = []
+        chunks = str(raw_value).replace("\n", ",").replace(";", ",").split(",")
+        for chunk in chunks:
+            item = chunk.strip()
+            if not item:
+                continue
+
+            if ":" in item:
+                seg_id, seg_name = item.split(":", 1)
+            elif "=" in item:
+                seg_id, seg_name = item.split("=", 1)
+            else:
+                seg_id, seg_name = item, ""
+
+            seg_id = seg_id.strip()
+            if not seg_id.isdigit():
+                _LOGGER.warning("Ignoring invalid manual segment id: %s", seg_id)
+                continue
+
+            seg_name = seg_name.strip() or f"Room {seg_id}"
+            segments.append(Segment(id=str(int(seg_id)), name=seg_name))
+
+        unique = {segment.id: segment for segment in segments}
+        return [unique[key] for key in sorted(unique.keys(), key=lambda value: int(value))]
+
+    def _get_manual_segments(self):
+        """Read manual segment mapping from config entry options."""
+        config_entry = self.hass.config_entries.async_get_entry(self._entry_id)
+        if config_entry is None:
+            return []
+
+        raw_value = config_entry.options.get(CONF_MANUAL_SEGMENTS, DEFAULT_MANUAL_SEGMENTS)
+        return self._parse_manual_segments(raw_value)
+
     @property
     def name(self):
         """Return the name of the device."""
@@ -471,6 +517,11 @@ class ViomiVacuumEntity(StateVacuumEntity):
 
     async def async_get_segments(self):
         """Return segments available for area mapping."""
+        manual_segments = self._get_manual_segments()
+        if manual_segments:
+            self._cached_segments = manual_segments
+            return manual_segments
+
         segments = await self.hass.async_add_executor_job(self._get_segments_sync)
         self._cached_segments = segments
         return segments

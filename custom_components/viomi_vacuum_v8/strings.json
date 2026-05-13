@@ -18,5 +18,19 @@
     "abort": {
       "already_configured": "This device is already configured"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Viomi Vacuum V8 options",
+        "description": "Manual segments format: 1:Living Room,2:Kitchen. You can also use one entry per line.",
+        "data": {
+          "manual_segments": "Manual segments"
+        }
+      }
+    },
+    "error": {
+      "invalid_manual_segments": "Invalid format. Use numeric IDs, for example: 1:Living Room,2:Kitchen"
+    }
   }
 }
