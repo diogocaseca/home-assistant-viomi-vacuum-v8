@@ -127,7 +127,7 @@ class ViomiVacuumV8OptionsFlow(config_entries.OptionsFlowWithReload):
 
     def __init__(self, config_entry):
         """Initialize options flow."""
-        super().__init__(config_entry)
+        self._config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         """Manage integration options."""
@@ -144,7 +144,7 @@ class ViomiVacuumV8OptionsFlow(config_entries.OptionsFlowWithReload):
             {
                 vol.Optional(
                     CONF_MANUAL_SEGMENTS,
-                    default=self.config_entry.options.get(
+                    default=self._config_entry.options.get(
                         CONF_MANUAL_SEGMENTS,
                         DEFAULT_MANUAL_SEGMENTS,
                     ),
