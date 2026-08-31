@@ -1,4 +1,5 @@
 Version by Diogo Caseca
+Troquei de aspirador e possivelmente não vou conseguir manter essa integração até porque vou vender meu antigo aspirador, mas se abrir uma issue com os detalhes do problema e se possível algum log posso tentar continuar mantendo, não posso prometer nada por causa do meu trabalho mas farei o possível.
 
 # Home Assistant support for Viomi Vacuum V8 (STYJ02YM)
 
